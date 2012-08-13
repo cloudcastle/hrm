@@ -14,7 +14,7 @@ init(_Transport, Req, []) ->
 handle(Req, State) ->
     {Method, Req2} = cowboy_http_req:method(Req),
     {TaskId, Req3} = cowboy_http_req:binding(task, Req2),
-    {ok, Req4} = handle_method(Method, TaskId, Req3),
+    {ok, Req4} = handle_method(Method, binary_to_list(TaskId), Req3),
     {ok, Req4, State}.
 
 terminate(_Req, _State) ->
@@ -26,8 +26,10 @@ terminate(_Req, _State) ->
 
 % Get JSON status/info of task by ID
 handle_method('GET', TaskId, Req) ->
-    {ok, Task} = hrm_storage:get(TaskId),
-    reply(jiffy:encode(Task), Req);
+    case hrm_storage:get(TaskId) of
+        {ok, Task} -> reply(jiffy:encode({Task}), Req);
+        {error, notfound} -> reply(<<"">>, Req, 404)
+    end;
 
 % Create task
 handle_method('POST', _TaskId, Req) ->

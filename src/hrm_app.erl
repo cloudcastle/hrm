@@ -17,6 +17,7 @@ start(_StartType, _StartArgs) ->
             {[<<"tasks">>, task], tasks_handler, []}
         ]}]}]
     ),
+    ok = hrm_storage:start(),
     hrm_sup:start_link().
 
 stop(_State) ->
