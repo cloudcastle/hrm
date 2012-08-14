@@ -13,9 +13,8 @@ init(_Transport, Req, []) ->
 
 handle(Req, State) ->
     {Method, Req2} = cowboy_http_req:method(Req),
-    {TaskId, Req3} = cowboy_http_req:binding(task, Req2),
-    {ok, Req4} = handle_method(Method, binary_to_list(TaskId), Req3),
-    {ok, Req4, State}.
+    {ok, Req3} = handle_method(Method, task_id_from_req(Req2), Req2),
+    {ok, Req3, State}.
 
 terminate(_Req, _State) ->
     ok.
@@ -36,7 +35,7 @@ handle_method('POST', _TaskId, Req) ->
     NewTask = task_from_req(Req),
     case hrm:create_task(NewTask) of
         {ok, NewTaskId} -> reply(NewTaskId, Req);
-        {errors, Errors} -> reply(jiffy:encode({[{errors, Errors}]}), Req, 400)
+        {errors, Errors} -> reply(jiffy:encode({[{errors, {Errors}}]}), Req, 400)
     end;
 
 % Update task, e.g. meta information
@@ -70,5 +69,13 @@ reply(Content, Req, Status) ->
 
 task_from_req(Req) ->
     {PostVals, _} = cowboy_http_req:body_qs(Req),
-    Aliases = [{atom_to_binary(Field, utf8), Field} || Field <- hrm:task_fields()],
+    Aliases = [{atom_to_binary(Field, utf8), Field} || Field <- hrm_tasks:fields()],
     proplists:substitute_aliases(Aliases, PostVals).
+
+task_id_from_req(Req) ->
+    {TaskId, _} = cowboy_http_req:binding(task, Req),
+    if
+        TaskId =:= undefined -> undefined;
+        true -> binary_to_list(TaskId)
+    end.
+        
