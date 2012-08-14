@@ -3,7 +3,12 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2, stop/1]).
+-export([start/0, start/2, stop/1]).
+
+% Entry point
+start() ->
+    ok = application:start(cowboy),
+    ok = application:start(hrm_app).
 
 %% ===================================================================
 %% Application callbacks
@@ -18,7 +23,7 @@ start(_StartType, _StartArgs) ->
         ]}]}]
     ),
     ok = hrm_storage:start(),
-    hrm_sup:start_link().
+    {ok, _} = hrm_sup:start_link().
 
 stop(_State) ->
     ok.

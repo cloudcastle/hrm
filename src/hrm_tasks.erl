@@ -1,22 +1,36 @@
 -module(hrm_tasks).
 
--export([fields/0, validate/1]).
+-export([create/1, fields/0]).
+
+% Create and enqueue task
+create(NewTask) ->
+    NewTask2 = [{status, pending} | NewTask],
+    create(NewTask2, validate(NewTask2)).
 
 fields() ->
     [action_url, callback_url, instance_id, access_key_id, access_key_secret, status, meta].
+
+%% ===================================================================
+%% Private
+%% ===================================================================
+
+create(NewTask, []) ->
+    NewTaskId = uuid:uuid_to_string(uuid:get_v4()),
+    hrm_storage:store(NewTaskId, NewTask),
+    io:format("Enqueuing task '~p' with key '~p'~n", [NewTask, NewTaskId]), % todo
+    {ok, NewTaskId};
+
+create(_NewTask, Errors) ->
+    {errors, Errors}.
 
 % Returns list of errors for Task, may be empty list.
 validate(Task) ->
     FieldValidator = fun(Field) ->
         {Field, validate_field(Task, Field, proplists:get_value(Field, Task))}
     end,
-    lists:filter(fun({Field, Error}) ->
+    lists:filter(fun({_, Error}) ->
         Error =/= ok
     end, lists:map(FieldValidator, fields())).
-
-%% ===================================================================
-%% Private
-%% ===================================================================
 
 % Validation of specific fields
 

@@ -33,7 +33,7 @@ handle_method('GET', TaskId, Req) ->
 % Create task
 handle_method('POST', _TaskId, Req) ->
     NewTask = task_from_req(Req),
-    case hrm:create_task(NewTask) of
+    case hrm_tasks:create(NewTask) of
         {ok, NewTaskId} -> reply(NewTaskId, Req);
         {errors, Errors} -> reply(jiffy:encode({[{errors, {Errors}}]}), Req, 400)
     end;
