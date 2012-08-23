@@ -40,9 +40,7 @@ handle_method('POST', _TaskId, Req) ->
 
 % Update task, e.g. meta information
 handle_method('PUT', TaskId, Req) ->
-    {ok, OldTask} = hrm_storage:get(TaskId),
-    NewTask = task_from_req(Req) ++ OldTask,
-    ok = hrm_storage:store(TaskId, NewTask),
+    ok = hrm_storage:append(TaskId, task_from_req(Req)),
     {ok, Req};
 
 % Delete task

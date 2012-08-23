@@ -1,6 +1,6 @@
 -module(hrm_tasks).
 
--export([create/1, fields/0]).
+-export([create/1, fields/0, field_value/2]).
 
 % Create and enqueue task
 create(NewTask) ->
@@ -10,6 +10,12 @@ create(NewTask) ->
 fields() ->
     [action_url, callback_url, instance_id, access_key_id, access_key_secret, status, meta].
 
+field_value(Field, Task) ->
+    case proplists:get_value(Field, Task) of
+        Value when is_binary(Value) -> binary_to_list(Value);
+        Value -> Value
+    end.
+
 %% ===================================================================
 %% Private
 %% ===================================================================
@@ -17,7 +23,7 @@ fields() ->
 create(NewTask, []) ->
     NewTaskId = uuid:uuid_to_string(uuid:get_v4()),
     hrm_storage:store(NewTaskId, NewTask),
-    io:format("Enqueuing task '~p' with key '~p'~n", [NewTask, NewTaskId]), % todo
+    hrm_tasks_sup:start_child(NewTaskId, NewTask),
     {ok, NewTaskId};
 
 create(_NewTask, Errors) ->
@@ -26,7 +32,7 @@ create(_NewTask, Errors) ->
 % Returns list of errors for Task, may be empty list.
 validate(Task) ->
     FieldValidator = fun(Field) ->
-        {Field, validate_field(Task, Field, proplists:get_value(Field, Task))}
+        {Field, validate_field(Task, Field, field_value(Field, Task))}
     end,
     lists:filter(fun({_, Error}) ->
         Error =/= ok
@@ -61,7 +67,7 @@ validate_field(_, _, _) ->
 % Validation methods
 
 validate_url(Url) ->
-    case uri:parse(binary_to_list(Url)) of
+    case uri:parse(Url) of
         {ok, _} -> ok;
         {error, _} -> malformed_url
     end.

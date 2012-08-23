@@ -8,6 +8,7 @@
 % Entry point
 start() ->
     ok = application:start(cowboy),
+    ok = inets:start(),
     ok = application:start(hrm_app).
 
 %% ===================================================================

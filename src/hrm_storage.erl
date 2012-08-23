@@ -1,6 +1,6 @@
 -module(hrm_storage).
 
--export([start/0, get/1, store/2, delete/1, init/0]).
+-export([start/0, get/1, store/2, append/2, delete/1, init/0]).
 
 -record(task, {key, data}).
 
@@ -14,7 +14,12 @@ get(Key) ->
     end.
 
 store(Key, Data) ->
-    mnesia:dirty_write(#task{key=Key, data=Data}).
+    mnesia:dirty_write(#task{key=Key, data=normalize(Data)}).
+
+append(Key, PartialData) ->
+    {ok, OldData} = hrm_storage:get(Key),
+    NewData = PartialData ++ OldData,
+    store(Key, NewData).
 
 delete(Key) ->
     mnesia:dirty_delete(task, Key).
@@ -29,3 +34,6 @@ init() ->
         {attributes, record_info(fields, task)}
     ]),
     ok.
+
+normalize(Data) ->
+    [{Key, proplists:get_value(Key, Data)} || Key <- proplists:get_keys(Data)].
