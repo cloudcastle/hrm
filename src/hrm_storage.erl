@@ -14,7 +14,9 @@ get(Key) ->
     end.
 
 store(Key, Data) ->
-    mnesia:dirty_write(#task{key=Key, data=normalize(Data)}).
+    NewData = hrm_utils:normalize_proplist(Data),
+    ok = mnesia:dirty_write(#task{key=Key, data=NewData}),
+    {ok, NewData}.
 
 append(Key, PartialData) ->
     {ok, OldData} = hrm_storage:get(Key),
@@ -34,6 +36,3 @@ init() ->
         {attributes, record_info(fields, task)}
     ]),
     ok.
-
-normalize(Data) ->
-    [{Key, proplists:get_value(Key, Data)} || Key <- proplists:get_keys(Data)].

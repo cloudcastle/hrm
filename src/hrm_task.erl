@@ -20,23 +20,26 @@ handle_info(_Info, #state{id=TaskId, task=Task}=State) ->
     {stop, normal, State}.
 
 do_action_request(TaskId, Task) ->
-    {ok, {{_, StatusCode, StatusText}, _, _}} = httpc:request(hrm_tasks:field_value(action_url, Task)),
-    process_action_response({StatusCode, StatusText}, TaskId, Task),
+    Url = hrm_utils:append_query_params(hrm_tasks:field_value(action_url, Task), [{hrm_task_id, TaskId}]),
+    {ok, {{_, StatusCode, StatusText}, _, _}} = httpc:request(Url),
+    process_action_response({StatusCode, StatusText}, TaskId),
     ok.
 
-process_action_response({200, _}, TaskId, Task) ->
-    ok = hrm_storage:append(TaskId, [{status, complete}]),
-    ok = do_callback(TaskId, Task),
+process_action_response({200, _}, TaskId) ->
+    {ok, Task2} = hrm_storage:append(TaskId, [{status, complete}]),
+    ok = do_callback(TaskId, Task2),
     ok;
 
-process_action_response({StatusCode, StatusText}, TaskId, Task) ->
+process_action_response({StatusCode, StatusText}, TaskId) ->
     Meta = {[{status, StatusCode}, {message, list_to_binary(StatusText)}]},
-    ok = hrm_storage:append(TaskId, [{status, error}, {meta, Meta}]),
-    ok = do_callback(TaskId, Task),
+    {ok, Task2} = hrm_storage:append(TaskId, [{status, error}, {meta, Meta}]),
+    ok = do_callback(TaskId, Task2),
     ok.
 
-do_callback(_TaskId, Task) ->
-    {ok, _} = httpc:request(hrm_tasks:field_value(callback_url, Task)),
+do_callback(TaskId, Task) ->
+    Params = [{hrm_task_id, TaskId}, {hrm_task, jiffy:encode({Task})}],
+    Url = hrm_utils:append_query_params(hrm_tasks:field_value(callback_url, Task), Params),
+    {ok, _} = httpc:request(Url),
     ok.
 
 %% Boilerplate
