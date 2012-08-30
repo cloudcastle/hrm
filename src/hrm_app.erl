@@ -9,6 +9,7 @@
 start() ->
     ok = application:start(cowboy),
     ok = inets:start(),
+    ok = ssl:start(),
     ok = application:start(hrm_app).
 
 %% ===================================================================
