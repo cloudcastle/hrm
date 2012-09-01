@@ -1,31 +1,28 @@
 -module(hrm_app).
 
--behaviour(application).
+-behavior(e2_application).
 
-%% Application callbacks
--export([start/0, start/2, stop/1]).
+-export([init/0]).
 
-% Entry point
-start() ->
-    ok = application:start(cowboy),
-    ok = inets:start(),
-    ok = ssl:start(),
-    ok = application:start(hrm_app).
+%%%===================================================================
+%%% e2_application callbacks
+%%%===================================================================
 
-%% ===================================================================
-%% Application callbacks
-%% ===================================================================
+init() ->
+  {ok, _} = cowboy:start_listener(hrm_http_listener, 100,
+    cowboy_tcp_transport, [{port, 8080}],
+    cowboy_http_protocol, [{dispatch, [{'_', [
+      {[<<"tasks">>], tasks_handler, []},
+      {[<<"tasks">>, task], tasks_handler, []}
+    ]}]}]
+  ),
+  {ok, [
+    {hrm_storage, start_link, [config_value(db_file)]},
+    hrm_tasks_sup
+  ]}.
 
-start(_StartType, _StartArgs) ->
-    {ok, _} = cowboy:start_listener(hrm_http_listener, 100,
-        cowboy_tcp_transport, [{port, 8080}],
-        cowboy_http_protocol, [{dispatch, [{'_', [
-            {[<<"tasks">>], tasks_handler, []},
-            {[<<"tasks">>, task], tasks_handler, []}
-        ]}]}]
-    ),
-    ok = hrm_storage:start(),
-    {ok, _} = hrm_sup:start_link().
+config_value(Key) ->
+  handle_app_env(application:get_env(Key), Key).
 
-stop(_State) ->
-    ok.
+handle_app_env({ok, Value}, _Key) -> Value;
+handle_app_env(undefined, Key) -> throw({config_value_undefined, Key}).

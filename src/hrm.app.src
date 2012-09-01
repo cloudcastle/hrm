@@ -1,0 +1,16 @@
+{application, hrm, [
+  {description, "HRM"},
+  {vsn, "1"},
+  {modules, []},
+  {registered, []},
+  {mod, {e2_application, [hrm_app]}},
+  {env, []},
+  {applications, [
+    kernel,
+    stdlib,
+    sasl,
+    inets,
+    ssl,
+    cowboy
+  ]}
+]}.

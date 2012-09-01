@@ -1,6 +1,11 @@
-deps/*
-ebin/*
+*.beam
+.eunit
 erl_crash.dump
+ebin
+deps
+log
+run
+dev.config
 *.iml
 .idea
-Mnesia.*
+*.db

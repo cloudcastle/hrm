@@ -23,7 +23,7 @@ field_value(Field, Task) ->
 create(NewTask, []) ->
     NewTaskId = uuid:uuid_to_string(uuid:get_v4()),
     {ok, NewTask2} = hrm_storage:store(NewTaskId, NewTask),
-    hrm_tasks_sup:start_child(NewTaskId, NewTask2),
+    hrm_tasks_sup:start_task(NewTaskId, NewTask2),
     {ok, NewTaskId};
 
 create(_NewTask, Errors) ->

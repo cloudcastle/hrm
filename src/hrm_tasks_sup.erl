@@ -1,17 +1,11 @@
 -module(hrm_tasks_sup).
--behaviour(supervisor).
 
--export([start_link/0, start_child/2]).
+-behaviour(e2_task_supervisor).
 
--export([init/1]).
-
--define(SERVER, ?MODULE).
+-export([start_link/0, start_task/2]).
 
 start_link() ->
-    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+  e2_task_supervisor:start_link(?MODULE, hrm_task, [registered]).
 
-start_child(TaskId, Task) ->
-    supervisor:start_child(?SERVER, [TaskId, Task]).
-
-init([]) ->
-    {ok, {{simple_one_for_one, 0, 1}, [{hrm_task, {hrm_task, start_link, []}, temporary, brutal_kill, worker, [hrm_task]}]}}.
+start_task(TaskId, Task) ->
+  e2_task_supervisor:start_task(?MODULE, [TaskId, Task]).

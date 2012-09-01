@@ -1,26 +1,20 @@
 -module(hrm_task).
--behaviour(gen_server).
 
-%% API
+-behaviour(e2_task).
+
 -export([start_link/2]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
-
--record(state, {id, task}).
+-export([handle_task/1]).
 
 -define(EC2_INTERVAL, 3000).
 
 start_link(TaskId, Task) ->
-    gen_server:start_link(?MODULE, [TaskId, Task], []).
+  e2_task:start_link(?MODULE, [TaskId, Task]).
 
-init([TaskId, Task]) ->
-    {ok, #state{id=TaskId, task=Task}, 0}.
-
-handle_info(_Info, #state{id=TaskId, task=Task}=State) ->
-    ok = ensure_instance(Task),
-    ok = do_action_request(TaskId, Task),
-    {stop, normal, State}.
+handle_task([TaskId, Task]) ->
+  ok = ensure_instance(Task),
+  ok = do_action_request(TaskId, Task),
+  {stop, normal}.
 
 do_action_request(TaskId, Task) ->
     Url = hrm_utils:append_query_params(hrm_tasks:field_value(action_url, Task), [{hrm_task_id, TaskId}]),
@@ -63,10 +57,3 @@ wait_for_instance(InstanceId, EC2) ->
       wait_for_instance(InstanceId, EC2);
     "running" -> ok
   end.
-
-%% Boilerplate
-
-handle_call(_Request, _From, State) -> {reply, ok, State}.
-handle_cast(_Msg, State) -> {noreply, State}.
-terminate(_Reason, _State) -> ok.
-code_change(_OldVsn, State, _Extra) -> {ok, State}.

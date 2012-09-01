@@ -1,1 +1,1 @@
-# HR manager
+# HRM - Hardware Resource Manager
