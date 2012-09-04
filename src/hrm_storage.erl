@@ -2,46 +2,76 @@
 
 -behavior(e2_service).
 
--export([start_link/1, get/1, store/2, append/2, delete/1]).
+-export([get/1, put/1, update/2, delete/1, list/0]).
 
+-export([start_link/1]).
 -export([init/1, handle_msg/3]).
+
+-include("../include/hrm_task.hrl").
+
+%%%===================================================================
+%%% Public API
+%%%===================================================================
+
+get(Id) ->
+  e2_service:call(?MODULE, {get, Id}).
+
+put(Task) ->
+  e2_service:call(?MODULE, {put, Task}).
+
+update(Id, Fun) ->
+  e2_service:call(?MODULE, {update, Id, Fun}).
+
+delete(Id) ->
+  e2_service:call(?MODULE, {delete, Id}).
+
+list() ->
+  e2_service:call(?MODULE, {list}).
 
 start_link(File) ->
   e2_service:start_link(?MODULE, File, [registered]).
 
-get(Key) ->
-  e2_service:call(?MODULE, {get, Key}).
-
-store(Key, Data) ->
-  e2_service:call(?MODULE, {store, Key, Data}).
-
-append(Key, PartialData) ->
-  e2_service:call(?MODULE, {append, Key, PartialData}).
-
-delete(Key) ->
-  e2_service:call(?MODULE, {delete, Key}).
+%%%===================================================================
+%%% e2_service callbacks
+%%%===================================================================
 
 init(File) ->
   {ok, Db} = dets:open_file(File, []),
   {ok, Db}.
 
-handle_msg({get, Key}, _From, Db) ->
-  Response = case dets:lookup(Db, Key) of
-    [{_Key, Data}] -> {ok, Data};
-    [] -> {error, notfound}
+handle_msg({get, Id}, _From, Db) ->
+  Response = case dets:lookup(Db, Id) of
+    [{Id, Task}] ->
+      {ok, Task};
+    [] ->
+      {error, notfound}
   end,
   {reply, Response, Db};
 
-handle_msg({store, Key, Data}, _From, Db) ->
-  NewData = hrm_utils:normalize_proplist(Data),
-  ok = dets:insert(Db, {Key, NewData}),
-  {reply, {ok, NewData}, Db};
+handle_msg({put, Task}, _From, Db) ->
+  ok = dets:insert(Db, {Task#task.id, Task}),
+  {reply, {ok, Task}, Db};
 
-handle_msg({append, Key, PartialData}, _From, Db) ->
-  [{_Key, OldData}] = dets:lookup(Db, Key),
-  NewData = hrm_utils:normalize_proplist(PartialData ++ OldData),
-  ok = dets:insert(Db, {Key, NewData}),
-  {reply, {ok, NewData}, Db};
+handle_msg({update, Id, Fun}, _From, Db) ->
+  Response = case dets:lookup(Db, Id) of
+    [{Id, Task}] ->
+      ok = dets:insert(Db, {Id, Fun(Task)}),
+      {ok, Task};
+    [] ->
+      {error, notfound}
+  end,
+  {reply, Response, Db};
 
-handle_msg({delete, Key}, _From, Db) ->
-  {reply, dets:delete(Db, Key), Db}.
+handle_msg({delete, Id}, _From, Db) ->
+  Response = case dets:lookup(Db, Id) of
+    [{Id, Task}] ->
+      ok = dets:delete(Db, Id),
+      {ok, Task};
+    [] ->
+      {error, notfound}
+  end,
+  {reply, Response, Db};
+
+handle_msg({list}, _From, Db) ->
+  Response = dets:traverse(Db, fun(X) -> {continue, X} end),
+  {reply, Response, Db}.
