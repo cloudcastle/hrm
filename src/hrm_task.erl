@@ -44,16 +44,9 @@ update_meta(TaskId, Meta) ->
   end).
 
 to_json(Task) when is_record(Task, task) ->
-  jiffy:encode({[
-    {id, to_json(Task#task.id)},
-    {action_url, to_json(Task#task.action_url)},
-    {callback_url, to_json(Task#task.callback_url)},
-    {instance_id, to_json(Task#task.instance_id)},
-    {status, to_json(Task#task.status)},
-    {meta, to_json(Task#task.meta)},
-    {started_at, to_json(Task#task.started_at)},
-    {completed_at, to_json(Task#task.completed_at)}
-  ]});
+  Keys = record_info(fields, task),
+  Values = lists:map(fun to_json/1, tl(tuple_to_list(Task))),
+  jiffy:encode({lists:zip(Keys, Values)});
 to_json(Value) when is_list(Value) -> list_to_binary(Value);
 to_json(undefined) -> null;
 to_json(Value) -> Value.
