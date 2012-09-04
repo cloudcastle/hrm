@@ -79,25 +79,18 @@ ensure_instance(undefined, _, _) ->
   ok;
 ensure_instance(InstanceId, AccessKeyId, AccessKeySecret) ->
   EC2 = erlaws_ec2:new(AccessKeyId, AccessKeySecret, true),
-  handle_instance_state(InstanceId, EC2).
+  handle_instance_state(InstanceId, EC2, get_instance_state(InstanceId, EC2)).
 
-handle_instance_state(InstanceId, EC2) ->
-  [InstanceData] = EC2:describe_instances([InstanceId]),
-  handle_instance_state(InstanceId, EC2, proplists:get_value(instance_state, InstanceData)).
+handle_instance_state(InstanceId, EC2, stopped) ->
+  [{_, State, _}] = EC2:start_instances([InstanceId]),
+  handle_instance_state(InstanceId, EC2, list_to_atom(State));
 
-handle_instance_state(InstanceId, EC2, "stopped") ->
-  EC2:start_instances([InstanceId]),
-  wait_for_state_change(InstanceId, EC2);
-handle_instance_state(InstanceId, EC2, "pending") ->
-  wait_for_state_change(InstanceId, EC2);
-handle_instance_state(InstanceId, EC2, "stopping") ->
-  wait_for_state_change(InstanceId, EC2);
-handle_instance_state(_InstanceId, _EC2, "running") ->
-  ok.
-
-wait_for_state_change(InstanceId, EC2) ->
+handle_instance_state(InstanceId, EC2, S) when S == pending; S == stopping ->
   timer:sleep(?EC2_INTERVAL),
-  handle_instance_state(InstanceId, EC2).
+  handle_instance_state(InstanceId, EC2, get_instance_state(InstanceId, EC2));
+
+handle_instance_state(_, _, running) ->
+  ok.
 
 %%% do_action_request/1
 
@@ -156,14 +149,19 @@ validate_ec2_instance(undefined, _, _) ->
   ok;
 validate_ec2_instance(InstanceId, AccessKey, AccessSecret) ->
   EC2 = erlaws_ec2:new(AccessKey, AccessSecret, true),
-  [InstanceData] = EC2:describe_instances([InstanceId]),
+  validate_instance_state(get_instance_state(InstanceId, EC2)).
+
+validate_instance_state(S) when
+  S == stopped;
+  S == pending;
+  S == stopping;
+  S == running
+  -> ok;
+validate_instance_state(not_found) -> not_found;
+validate_instance_state(_) -> unexpected_state.
+
+get_instance_state(InstanceId, EC2) ->
   case EC2:describe_instances([InstanceId]) of
     [] -> not_found;
-    [InstanceData] -> validate_instance_state(proplists:get_value(instance_state, InstanceData))
-  end.
-
-validate_instance_state(State) ->
-  case lists:member(State, ["stopped", "pending", "stopping", "running"]) of
-    true -> ok;
-    false -> io:format("State: ~p~n", [State]), unexpected_state
+    [InstanceData] -> iolist_to_atom(proplists:get_value(instance_state, InstanceData))
   end.
