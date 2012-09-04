@@ -98,19 +98,14 @@ do_action_request(Task) ->
   Params = [{hrm_task_id, Task#task.id}],
   Url = hrm_utils:append_query_params(Task#task.action_url, Params),
   {ok, {{_, StatusCode, _}, _, Body}} = httpc:request(Url),
-  handle_action_response(Task, StatusCode, Body).
-
-handle_action_response(Task, 200, _) ->
   Task#task{
-    status = complete,
-    completed_at = hrm_utils:current_time()
-  };
-handle_action_response(Task, StatusCode, Body) ->
-  Task#task{
-    status = error,
-    meta = {[{status, StatusCode}, {message, list_to_binary(Body)}]},
-    completed_at = hrm_utils:current_time()
+    status = handle_response_status(StatusCode),
+    completed_at = hrm_utils:current_time(),
+    meta = {[{status, StatusCode}, {response, list_to_binary(Body)}]}
   }.
+
+handle_response_status(200) -> complete;
+handle_response_status(_) -> error.
 
 %%% do_callback_request/1
 
