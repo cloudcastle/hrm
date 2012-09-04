@@ -6,5 +6,7 @@
   access_key_id = undefined,
   access_key_secret = undefined,
   status = undefined,
-  meta = undefined
+  meta = undefined,
+  started_at = undefined,
+  completed_at = undefined
 }).

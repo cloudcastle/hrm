@@ -1,6 +1,6 @@
 -module(hrm_utils).
 
--export([thing_to_list/1, normalize_proplist/1, append_query_params/2]).
+-export([thing_to_list/1, normalize_proplist/1, append_query_params/2, current_time/0]).
 
 %% General "to_string" implementation
 thing_to_list(X) when is_integer(X) -> integer_to_list(X);
@@ -25,3 +25,7 @@ append_query_params(Url, Params) ->
 format_query(Params) ->
     Stringer = fun({K, V}) -> ["&", http_uri:encode(thing_to_list(K)), "=", http_uri:encode(thing_to_list(V))] end,
     lists:concat(tl(lists:flatmap(Stringer, Params))).
+
+%% Current GMT time in RFC1123 format
+current_time() ->
+  httpd_util:rfc1123_date(erlang:universaltime()).

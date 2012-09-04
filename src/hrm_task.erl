@@ -26,7 +26,8 @@ create(ActionUrl, CallbackUrl, InstanceId, AccessKeyId, AccessKeySecret) ->
     instance_id = InstanceId,
     access_key_id = AccessKeyId,
     access_key_secret = AccessKeySecret,
-    status = pending
+    status = pending,
+    started_at = hrm_utils:current_time()
   },
   case validate(Task) of
     [] ->
@@ -49,7 +50,9 @@ to_json(Task) when is_record(Task, task) ->
     {callback_url, to_json(Task#task.callback_url)},
     {instance_id, to_json(Task#task.instance_id)},
     {status, to_json(Task#task.status)},
-    {meta, to_json(Task#task.meta)}
+    {meta, to_json(Task#task.meta)},
+    {started_at, to_json(Task#task.started_at)},
+    {completed_at, to_json(Task#task.completed_at)}
   ]});
 to_json(Value) when is_list(Value) -> list_to_binary(Value);
 to_json(undefined) -> null;
@@ -113,12 +116,14 @@ do_action_request(Task) ->
 
 handle_action_response(Task, 200, _) ->
   Task#task{
-    status = complete
+    status = complete,
+    completed_at = hrm_utils:current_time()
   };
 handle_action_response(Task, StatusCode, Body) ->
   Task#task{
     status = error,
-    meta = {[{status, StatusCode}, {message, list_to_binary(Body)}]}
+    meta = {[{status, StatusCode}, {message, list_to_binary(Body)}]},
+    completed_at = hrm_utils:current_time()
   }.
 
 %%% do_callback_request/1
