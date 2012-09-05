@@ -158,5 +158,5 @@ validate_instance_state(_) -> unexpected_state.
 get_instance_state(InstanceId, EC2) ->
   case EC2:describe_instances([InstanceId]) of
     [] -> not_found;
-    [InstanceData] -> iolist_to_atom(proplists:get_value(instance_state, InstanceData))
+    [InstanceData] -> list_to_atom(proplists:get_value(instance_state, InstanceData))
   end.
