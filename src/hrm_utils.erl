@@ -1,6 +1,6 @@
 -module(hrm_utils).
 
--export([thing_to_list/1, normalize_proplist/1, append_query_params/2, current_time/0]).
+-export([thing_to_list/1, append_query_params/2, current_time/0]).
 
 %% General "to_string" implementation
 thing_to_list(X) when is_integer(X) -> integer_to_list(X);
@@ -8,10 +8,6 @@ thing_to_list(X) when is_float(X)   -> float_to_list(X);
 thing_to_list(X) when is_atom(X)    -> atom_to_list(X);
 thing_to_list(X) when is_binary(X)  -> binary_to_list(X);
 thing_to_list(X) when is_list(X)    -> X.
-
-%% Removes duplicates from proplist
-normalize_proplist(Data) ->
-    [{Key, proplists:get_value(Key, Data)} || Key <- proplists:get_keys(Data)].
 
 %% Appends proplist to url as query string 
 append_query_params(Url, Params) ->
