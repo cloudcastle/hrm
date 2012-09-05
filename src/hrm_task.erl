@@ -52,13 +52,13 @@ to_json(undefined) -> null;
 to_json(Value) -> Value.
 
 start_link(Task) ->
-  e2_task:start_link(?MODULE, Task).
+  e2_task:start_link(?MODULE, [Task]).
 
 %%%===================================================================
 %%% e2_task callbacks
 %%%===================================================================
 
-handle_task(Task) ->
+handle_task([Task]) ->
   ok = ensure_instance(
     Task#task.instance_id,
     Task#task.access_key_id,
@@ -82,14 +82,22 @@ ensure_instance(InstanceId, AccessKeyId, AccessKeySecret) ->
   handle_instance_state(InstanceId, EC2, get_instance_state(InstanceId, EC2)).
 
 handle_instance_state(InstanceId, EC2, stopped) ->
-  [{_, State, _}] = EC2:start_instances([InstanceId]),
+  [{_, State, PrevState}] = EC2:start_instances([InstanceId]),
+  ok = handle_instance_start(InstanceId, EC2, list_to_atom(PrevState)),
   handle_instance_state(InstanceId, EC2, list_to_atom(State));
 
 handle_instance_state(InstanceId, EC2, S) when S == pending; S == stopping ->
+  io:format("S: ~p~n", [S]),
   timer:sleep(?EC2_INTERVAL),
   handle_instance_state(InstanceId, EC2, get_instance_state(InstanceId, EC2));
 
 handle_instance_state(_, _, running) ->
+  ok.
+
+handle_instance_start(InstanceId, EC2, stopped) ->
+  {ok, _} = hrm_stoppers_sup:start_stopper(InstanceId, EC2),
+  ok;
+handle_instance_start(_, _, _) ->
   ok.
 
 %%% do_action_request/1
