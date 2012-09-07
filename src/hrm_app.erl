@@ -19,7 +19,8 @@ init() ->
   {ok, [
     {hrm_storage, start_link, [config_value(db_file)]},
     hrm_tasks_sup,
-    hrm_stoppers_sup
+    hrm_stoppers_sup,
+    {hrm_persistent_jobs, start_link, [config_value(jobs_db_file)]}
   ]}.
 
 config_value(Key) ->

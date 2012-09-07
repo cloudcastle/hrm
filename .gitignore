@@ -5,7 +5,6 @@ ebin
 deps
 log
 run
-dev.config
 *.iml
 .idea
 *.db
