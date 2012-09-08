@@ -2,7 +2,7 @@
 
 -behavior(e2_service).
 
--export([get/1, put/1, update/2, delete/1, list/0, match/1]).
+-export([get/1, put/1, update/2, delete/1, match/1]).
 
 -export([start_link/1]).
 -export([init/1, handle_msg/3]).
@@ -24,9 +24,6 @@ update(Id, Fun) ->
 
 delete(Id) ->
   e2_service:call(?MODULE, {delete, Id}).
-
-list() ->
-  e2_service:call(?MODULE, {list}).
 
 match(Pattern) ->
   e2_service:call(?MODULE, {match, Pattern}).
@@ -73,10 +70,6 @@ handle_msg({delete, Id}, _From, Db) ->
     [] ->
       {error, notfound}
   end,
-  {reply, Response, Db};
-
-handle_msg({list}, _From, Db) ->
-  Response = dets:traverse(Db, fun(X) -> {continue, X} end),
   {reply, Response, Db};
 
 handle_msg({match, Pattern}, _From, Db) ->

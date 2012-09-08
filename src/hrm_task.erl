@@ -87,7 +87,6 @@ handle_instance_state(InstanceId, EC2, stopped) ->
   handle_instance_state(InstanceId, EC2, list_to_atom(State));
 
 handle_instance_state(InstanceId, EC2, S) when S == pending; S == stopping ->
-  io:format("S: ~p~n", [S]),
   timer:sleep(?EC2_INTERVAL),
   handle_instance_state(InstanceId, EC2, get_instance_state(InstanceId, EC2));
 
