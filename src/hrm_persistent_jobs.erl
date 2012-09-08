@@ -50,9 +50,13 @@ handle_msg(extract_lost_children, _From, Db) ->
   Reply = lists:map(fun([_, Spec]) -> Spec end, LostChildren),
   {reply, Reply, Db};
 
-handle_msg({'DOWN', _Ref, process, Pid, Args}, _From, Db) ->
+handle_msg({'DOWN', _Ref, process, Pid, normal}, _From, Db) ->
+  dets:delete(Db, Pid),
+  {noreply, Db};
+
+handle_msg({'DOWN', _Ref, process, Pid, Reason}, _From, Db) ->
   case dets:lookup(Db, Pid) of
-    [{Pid, Spec, running}] -> dets:insert(Db, {Pid, Spec, Args})
+    [{Pid, Spec, running}] -> dets:insert(Db, {Pid, Spec, Reason})
   end,
   {noreply, Db}.
 
