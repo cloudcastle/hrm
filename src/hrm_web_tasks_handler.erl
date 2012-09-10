@@ -71,7 +71,10 @@ reply(Content, Req, Status) ->
 post_values(Req, Fields) ->
   {PostVals, _} = cowboy_http_req:body_qs(Req),
   lists:map(fun(Field) ->
-    hrm_utils:thing_to_list(proplists:get_value(atom_to_binary(Field, utf8), PostVals))
+    case proplists:get_value(atom_to_binary(Field, utf8), PostVals) of
+      undefined -> undefined;
+      Value -> hrm_utils:thing_to_list(Value)
+    end
   end, Fields).
 
 task_id_from_req(Req) ->
