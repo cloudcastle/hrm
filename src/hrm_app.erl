@@ -10,7 +10,7 @@
 
 init() ->
   {ok, _} = cowboy:start_listener(hrm_http_listener, 100,
-    cowboy_tcp_transport, [{port, 8080}],
+    cowboy_tcp_transport, [{port, config_value(http_port)}],
     cowboy_http_protocol, [{dispatch, [{'_', [
       {[<<"tasks">>], hrm_web_handler, []},
       {[<<"tasks">>, task], hrm_web_handler, []}
