@@ -1,4 +1,4 @@
--module(hrm_web_handler).
+-module(hrm_web_tasks_handler).
 
 -behaviour(cowboy_http_handler).
 
