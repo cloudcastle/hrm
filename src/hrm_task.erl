@@ -94,7 +94,7 @@ handle_instance_state(_, _, running) ->
   ok.
 
 handle_instance_start(InstanceId, EC2, stopped) ->
-  hrm_persistent_jobs:start(hrm_stoppers_sup, start_stopper, [InstanceId, EC2]);
+  hrm_persistent_jobs:start(hrm_stoppers_sup, start_stopper, [InstanceId, EC2, calendar:universal_time()]);
 handle_instance_start(_, _, _) ->
   ok.
 

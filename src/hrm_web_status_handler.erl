@@ -28,7 +28,7 @@ terminate(_Req, _State) ->
 % Get JSON status/info of task by ID
 handle_method('GET', Req) ->
   StoppersSpecsList = hrm_persistent_jobs:status(),
-  StopperInstances = lists:map(fun([[hrm_stoppers_sup, start_stopper, [InstanceId, _]]]) ->
+  StopperInstances = lists:map(fun([[hrm_stoppers_sup, start_stopper, [InstanceId | _]]]) ->
     list_to_binary(InstanceId)
   end, StoppersSpecsList),
   PendingTasksList = hrm_storage:match({'$1', #task{instance_id='$2', status=pending, _='_'}}),
