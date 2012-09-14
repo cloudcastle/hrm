@@ -57,3 +57,4 @@ Returns JSON with:
 
 - wipe `access_key_id` and `access_key_secret` when it's not needed anymore
 - some way to get monit (or some other monitoring tool) play well with daemon
+- ensure worker services are up after instance start 
