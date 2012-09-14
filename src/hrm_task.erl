@@ -134,6 +134,15 @@ validate(Task) ->
   end,
   lists:filter(OkFilter, ValidationResults).
 
+%%% get_instance_state/2
+
+get_instance_state(InstanceId, EC2) ->
+  [InstanceData] = EC2:describe_instances([InstanceId]),
+  get_instance_state(InstanceData).
+
+get_instance_state(InstanceData) ->
+  list_to_atom(proplists:get_value(instance_state, InstanceData)).
+
 %%%===================================================================
 %%% Common validation methods
 %%%===================================================================
@@ -150,7 +159,12 @@ validate_ec2_instance(undefined, _, _) ->
   ok;
 validate_ec2_instance(InstanceId, AccessKey, AccessSecret) ->
   EC2 = erlaws_ec2:new(AccessKey, AccessSecret, true),
-  validate_instance_state(get_instance_state(InstanceId, EC2)).
+  try EC2:describe_instances([InstanceId]) of
+    [] -> not_found;
+    [InstanceData] -> validate_instance_state(get_instance_state(InstanceData))
+  catch
+    throw:{error, {"403", _}, _} -> forbidden
+  end.
 
 validate_instance_state(S) when
   S == stopped;
@@ -158,11 +172,4 @@ validate_instance_state(S) when
   S == stopping;
   S == running
   -> ok;
-validate_instance_state(not_found) -> not_found;
 validate_instance_state(_) -> unexpected_state.
-
-get_instance_state(InstanceId, EC2) ->
-  case EC2:describe_instances([InstanceId]) of
-    [] -> not_found;
-    [InstanceData] -> list_to_atom(proplists:get_value(instance_state, InstanceData))
-  end.
