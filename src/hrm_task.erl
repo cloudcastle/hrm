@@ -112,12 +112,20 @@ handle_instance_start(_, _, _) ->
 do_action_request(Task) ->
   Params = [{hrm_task_id, Task#task.id}],
   Url = hrm_utils:append_query_params(Task#task.action_url, Params),
-  {ok, {{_, StatusCode, _}, _, Body}} = httpc:request(Url),
-  Task#task{
-    status = handle_response_status(StatusCode),
-    completed_at = hrm_utils:current_time(),
-    meta = {[{status, StatusCode}, {response, list_to_binary(Body)}]}
-  }.
+  case httpc:request(Url) of
+    {ok, {{_, StatusCode, _}, _, Body}} ->
+      Task#task{
+        status = handle_response_status(StatusCode),
+        completed_at = hrm_utils:current_time(),
+        meta = {[{status, StatusCode}, {response, list_to_binary(Body)}]}
+      };
+    {error, Reason} ->
+      Task#task{
+        status = error,
+        completed_at = hrm_utils:current_time(),
+        meta = list_to_binary(io_lib:format("~p", [Reason]))
+      }
+  end.
 
 handle_response_status(200) -> complete;
 handle_response_status(_) -> error.
