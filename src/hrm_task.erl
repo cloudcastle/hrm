@@ -47,7 +47,9 @@ update_meta(TaskId, Meta) ->
 to_json(Task) when is_record(Task, task) ->
   Keys = record_info(fields, task),
   Values = lists:map(fun to_json/1, tl(tuple_to_list(Task))),
-  jiffy:encode({lists:zip(Keys, Values)});
+  Pairs = proplists:delete(access_key_secret, lists:zip(Keys, Values)),
+  jiffy:encode({Pairs});
+
 to_json(Value) when is_list(Value) -> list_to_binary(Value);
 to_json(undefined) -> null;
 to_json(Value) -> Value.
