@@ -7,7 +7,8 @@
 -export([start_link/1]).
 -export([handle_task/1]).
 
--define(EC2_INTERVAL, 3000).
+-define(EC2_POLL_INTERVAL, 5000).
+-define(EC2_INIT_DELAY,   10000).
 
 -include("../include/hrm_task.hrl").
 
@@ -88,23 +89,26 @@ ensure_instance(undefined, _, _) ->
   ok;
 ensure_instance(InstanceId, AccessKeyId, AccessKeySecret) ->
   EC2 = erlaws_ec2:new(AccessKeyId, AccessKeySecret, true),
-  handle_instance_state(InstanceId, EC2, get_instance_state(InstanceId, EC2)).
+  handle_instance_state({unknown, get_instance_state(InstanceId, EC2)}, InstanceId, EC2).
 
-handle_instance_state(InstanceId, EC2, stopped) ->
+handle_instance_state({_, stopped}, InstanceId, EC2) ->
   [{_, State, PrevState}] = EC2:start_instances([InstanceId]),
-  ok = handle_instance_start(InstanceId, EC2, list_to_atom(PrevState)),
-  handle_instance_state(InstanceId, EC2, list_to_atom(State));
+  handle_instance_state({list_to_atom(PrevState), list_to_atom(State)}, InstanceId, EC2);
 
-handle_instance_state(InstanceId, EC2, S) when S == pending; S == stopping ->
-  timer:sleep(?EC2_INTERVAL),
-  handle_instance_state(InstanceId, EC2, get_instance_state(InstanceId, EC2));
+handle_instance_state({stopped, pending}, InstanceId, EC2) ->
+  hrm_persistent_jobs:start(hrm_stoppers_sup, start_stopper, [InstanceId, EC2, calendar:universal_time()]),
+  timer:sleep(?EC2_POLL_INTERVAL),
+  handle_instance_state({pending, get_instance_state(InstanceId, EC2)}, InstanceId, EC2);
 
-handle_instance_state(_, _, running) ->
-  ok.
+handle_instance_state({_, S}, InstanceId, EC2) when S == pending; S == stopping ->
+  timer:sleep(?EC2_POLL_INTERVAL),
+  handle_instance_state({S, get_instance_state(InstanceId, EC2)}, InstanceId, EC2);
 
-handle_instance_start(InstanceId, EC2, stopped) ->
-  hrm_persistent_jobs:start(hrm_stoppers_sup, start_stopper, [InstanceId, EC2, calendar:universal_time()]);
-handle_instance_start(_, _, _) ->
+handle_instance_state({pending, running}, _, _) ->
+  timer:sleep(?EC2_INIT_DELAY),
+  ok;
+
+handle_instance_state({_, running}, _, _) ->
   ok.
 
 %%% do_action_request/1
