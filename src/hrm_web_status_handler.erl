@@ -32,8 +32,9 @@ handle_method('GET', Req) ->
     list_to_binary(InstanceId)
   end, StoppersSpecsList),
   PendingTasksList = hrm_storage:match({'$1', #task{instance_id='$2', status=pending, _='_'}}),
-  PendingTasks = lists:map(fun([TaskId, InstanceId]) ->
-    {list_to_binary(TaskId), list_to_binary(InstanceId)}
+  PendingTasks = lists:map(fun
+      ([TaskId, undefined]) -> {list_to_binary(TaskId), null};
+      ([TaskId, InstanceId]) -> {list_to_binary(TaskId), list_to_binary(InstanceId)}
   end, PendingTasksList),
   reply(jiffy:encode({[
     {controlled_instances, StopperInstances},
