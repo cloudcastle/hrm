@@ -59,12 +59,13 @@ start_link(Task) ->
 %%%===================================================================
 
 handle_task([Task]) ->
-  ok = ensure_instance(
-    Task#task.instance_id,
-    Task#task.access_key_id,
-    Task#task.access_key_secret
-  ),
-  Task2 = do_action_request(Task),
+  Task2 = try do_action(Task) of
+    Value -> Value
+  catch
+    _:Error ->
+      error_logger:error_msg("*** Error during task action:~n~p~n*** Stacktrace:~n~p~n", [Error, erlang:get_stacktrace()]),
+      Task#task{status = error}
+  end,
   hrm_storage:put(Task2),
   do_callback_request(Task2),
   {stop, normal}.
@@ -72,6 +73,14 @@ handle_task([Task]) ->
 %%%===================================================================
 %%% Private
 %%%===================================================================
+
+do_action(Task) ->
+  ok = ensure_instance(
+    Task#task.instance_id,
+    Task#task.access_key_id,
+    Task#task.access_key_secret
+  ),
+  do_action_request(Task).
 
 %%% ensure_instance/3
 
