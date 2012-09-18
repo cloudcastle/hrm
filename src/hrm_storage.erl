@@ -55,8 +55,9 @@ handle_msg({put, Task}, _From, Db) ->
 handle_msg({update, Id, Fun}, _From, Db) ->
   Response = case dets:lookup(Db, Id) of
     [{Id, Task}] ->
-      ok = dets:insert(Db, {Id, Fun(Task)}),
-      {ok, Task};
+      Task2 = Fun(Task),
+      ok = dets:insert(Db, {Id, Task2}),
+      {ok, Task2};
     [] ->
       {error, notfound}
   end,

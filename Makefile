@@ -17,9 +17,9 @@ refresh-deps:
 tests=""
 
 .PHONY: test
-test: compile
+test: quick
 ifeq ($(tests), "")
-	$(rebar) -j1 eunit
+	$(rebar) -j1 eunit skip_deps=true
 else
 	$(rebar) -j1 eunit suite=$(tests)
 endif
