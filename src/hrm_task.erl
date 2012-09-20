@@ -45,9 +45,9 @@ update_meta(TaskId, Meta) ->
   end).
 
 to_json(Task) when is_record(Task, task) ->
-  Keys = record_info(fields, task),
-  Values = lists:map(fun to_json/1, tl(tuple_to_list(Task))),
-  Pairs = proplists:delete(access_key_secret, lists:zip(Keys, Values)),
+  Pairs = lists:map(fun({K, V}) ->
+    {K, to_json(V)}
+  end, proplists:delete(access_key_secret, to_proplist(Task))),
   jiffy:encode({Pairs});
 
 to_json(Value) when is_list(Value) -> list_to_binary(Value);
@@ -76,6 +76,9 @@ handle_task([Task]) ->
 %%%===================================================================
 %%% Private
 %%%===================================================================
+
+to_proplist(Task) ->
+  lists:zip(record_info(fields, task), tl(tuple_to_list(Task))).
 
 do_action(Task) ->
   ok = ensure_instance(
@@ -116,9 +119,7 @@ handle_instance_state({_, running}, _, _) ->
 %%% do_action_request/1
 
 do_action_request(Task) ->
-  Params = [{hrm_task_id, Task#task.id}],
-  Url = hrm_utils:append_query_params(Task#task.action_url, Params),
-  case httpc:request(Url) of
+  case httpc:request(build_action_url(Task)) of
     {ok, {{_, StatusCode, _}, _, Body}} ->
       Task#task{
         status = handle_response_status(StatusCode),
@@ -132,6 +133,18 @@ do_action_request(Task) ->
         meta = list_to_binary(io_lib:format("~p", [Reason]))
       }
   end.
+
+build_action_url(Task) ->
+  Url = case re:run(Task#task.action_url, "{\\w+}") of
+    nomatch -> Task#task.action_url;
+    {match, _} -> replace_instance_props(Task, Task#task.action_url)
+  end,
+  hrm_utils:append_query_params(Url, [{hrm_task_id, Task#task.id}]).
+
+replace_instance_props(Task, Url) ->
+  lists:foldl(fun({Key, Value}, UrlResult) ->
+    re:replace(UrlResult, "{"++atom_to_list(Key)++"}", Value, [{return,list}])
+  end, Url, get_instance_data(Task)).
 
 handle_response_status(200) -> complete;
 handle_response_status(_) -> error.
@@ -147,15 +160,26 @@ do_callback_request(Task) ->
 %%% validate/1
 
 validate(Task) ->
-  ValidationResults = [
-    {action_url,   validate_url(Task#task.action_url)},
-    {callback_url, validate_url(Task#task.action_url)},
-    {instance_id,  validate_ec2_instance(Task#task.instance_id, Task#task.access_key_id, Task#task.access_key_secret)}
-  ],
-  OkFilter = fun({_Field, Result}) ->
+  Results = lists:map(fun({K, V}) ->
+    {K, validate_field(K, V, Task)}
+  end, to_proplist(Task)),
+  lists:filter(fun({_, Result}) ->
     Result =/= ok
-  end,
-  lists:filter(OkFilter, ValidationResults).
+  end, Results).
+
+validate_field(action_url,   Url, _) -> validate_url(Url);
+validate_field(callback_url, Url, _) -> validate_url(Url);
+
+validate_field(access_key_id, _, #task{instance_id=undefined}) -> ok;
+validate_field(access_key_id, V, _) -> validate_presence(V);
+validate_field(access_key_secret, _, #task{instance_id=undefined}) -> ok;
+validate_field(access_key_secret, V, _) -> validate_presence(V);
+
+validate_field(instance_id, undefined, _) -> ok;
+validate_field(instance_id, InstanceId, #task{access_key_id=AccessKeyId, access_key_secret=AccessKeySecret}) ->
+  validate_ec2_instance(InstanceId, AccessKeyId, AccessKeySecret);
+
+validate_field(_, _, _) -> ok.
 
 %%% get_instance_state/2
 
@@ -166,9 +190,19 @@ get_instance_state(InstanceId, EC2) ->
 get_instance_state(InstanceData) ->
   list_to_atom(proplists:get_value(instance_state, InstanceData)).
 
+get_instance_data(#task{instance_id=undefined}) ->
+  [];
+get_instance_data(Task) ->
+  EC2 = erlaws_ec2:new(Task#task.access_key_id, Task#task.access_key_secret, true),
+  [InstanceData] = EC2:describe_instances([Task#task.instance_id]),
+  InstanceData.
+
 %%%===================================================================
 %%% Common validation methods
 %%%===================================================================
+
+validate_presence(undefined) -> undefined;
+validate_presence(_) -> ok.
 
 validate_url(undefined) ->
   undefined;
@@ -178,10 +212,13 @@ validate_url(Url) ->
     {error, _} -> malformed_url
   end.
 
-validate_ec2_instance(undefined, _, _) ->
+validate_ec2_instance(_, AccessKeyId, AccessKeySecret) when
+  AccessKeyId     == undefined;
+  AccessKeySecret == undefined ->
   ok;
-validate_ec2_instance(InstanceId, AccessKey, AccessSecret) ->
-  EC2 = erlaws_ec2:new(AccessKey, AccessSecret, true),
+
+validate_ec2_instance(InstanceId, AccessKeyId, AccessKeySecret) ->
+  EC2 = erlaws_ec2:new(AccessKeyId, AccessKeySecret, true),
   try EC2:describe_instances([InstanceId]) of
     [] -> not_found;
     [InstanceData] -> validate_instance_state(get_instance_state(InstanceData))
@@ -189,10 +226,10 @@ validate_ec2_instance(InstanceId, AccessKey, AccessSecret) ->
     throw:{error, {"403", _}, _} -> forbidden
   end.
 
-validate_instance_state(S) when
-  S == stopped;
-  S == pending;
-  S == stopping;
-  S == running
+validate_instance_state(State) when
+  State == stopped;
+  State == pending;
+  State == stopping;
+  State == running
   -> ok;
 validate_instance_state(_) -> unexpected_state.

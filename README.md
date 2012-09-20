@@ -18,6 +18,8 @@ It performs smart starting and stopping instances based on scheduled jobs.
 
 Returns ID to identify that job later.
 
+Use `{dns_name}` or `{private_dns_name}` as a part of `action_url` to use real instance hostname, i.e. `http://#{private_dns_name}/my_action_url`
+
 ### `GET /tasks/:id` — check job status.
 
 Returns JSON representation of job params, including `status` and `meta` (see below).
