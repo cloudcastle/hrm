@@ -8,5 +8,6 @@
   status = undefined,
   meta = undefined,
   started_at = undefined,
-  completed_at = undefined
+  completed_at = undefined,
+  callback_status = undefined
 }).

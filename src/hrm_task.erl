@@ -70,7 +70,8 @@ handle_task([Task]) ->
       Task#task{status = error}
   end,
   hrm_storage:put(Task2),
-  do_callback_request(Task2),
+  Task3 = do_callback_request(Task2),
+  hrm_storage:put(Task3),
   {stop, normal}.
 
 %%%===================================================================
@@ -122,9 +123,12 @@ do_action_request(Task) ->
   case httpc:request(build_action_url(Task)) of
     {ok, {{_, StatusCode, _}, _, Body}} ->
       Task#task{
-        status = handle_response_status(StatusCode),
+        status = case StatusCode of
+          200 -> complete;
+          _ -> error
+        end,
         completed_at = hrm_utils:current_time(),
-        meta = {[{status, StatusCode}, {response, list_to_binary(Body)}]}
+        meta = list_to_binary(io_lib:format("[~b] ~s", [StatusCode, Body]))
       };
     {error, Reason} ->
       Task#task{
@@ -146,17 +150,23 @@ replace_instance_props(Task, Url) ->
     re:replace(UrlResult, "{"++atom_to_list(Key)++"}", Value, [{return,list}])
   end, Url, get_instance_data(Task)).
 
-handle_response_status(200) -> complete;
-handle_response_status(_) -> error.
-
 %%% do_callback_request/1
 
-do_callback_request(#task{callback_url=undefined}) ->
-  ok;
+do_callback_request(#task{callback_url=undefined}=Task) ->
+  Task;
 do_callback_request(Task) ->
   Url = hrm_utils:append_query_params(Task#task.callback_url, [{hrm_task_id, Task#task.id}]),
-  {ok, _} = httpc:request(Url),
-  ok.
+  case httpc:request(Url) of
+    {ok, {{_, StatusCode, _}, _, Body}} ->
+      Task#task{
+        callback_status = case StatusCode of
+          200 -> complete;
+          _ -> list_to_binary(io_lib:format("[~b] ~s", [StatusCode, Body]))
+        end
+      };
+    {error, Reason} ->
+      Task#task{status = list_to_binary(io_lib:format("~p", [Reason]))}
+  end.
 
 %%% validate/1
 
