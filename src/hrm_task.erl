@@ -152,8 +152,7 @@ handle_response_status(_) -> error.
 %%% do_callback_request/1
 
 do_callback_request(Task) ->
-  Params = [{hrm_task_id, Task#task.id}, {hrm_task, to_json(Task)}],
-  Url = hrm_utils:append_query_params(Task#task.callback_url, Params),
+  Url = hrm_utils:append_query_params(Task#task.callback_url, [{hrm_task_id, Task#task.id}]),
   {ok, _} = httpc:request(Url),
   ok.
 
