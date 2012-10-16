@@ -151,6 +151,8 @@ handle_response_status(_) -> error.
 
 %%% do_callback_request/1
 
+do_callback_request(#task{callback_url=undefined}) ->
+  ok;
 do_callback_request(Task) ->
   Url = hrm_utils:append_query_params(Task#task.callback_url, [{hrm_task_id, Task#task.id}]),
   {ok, _} = httpc:request(Url),
@@ -167,6 +169,8 @@ validate(Task) ->
   end, Results).
 
 validate_field(action_url,   Url, _) -> validate_url(Url);
+
+validate_field(callback_url, undefined, _) -> ok;
 validate_field(callback_url, Url, _) -> validate_url(Url);
 
 validate_field(access_key_id, _, #task{instance_id=undefined}) -> ok;

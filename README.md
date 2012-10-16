@@ -11,10 +11,10 @@ It performs smart starting and stopping instances based on scheduled jobs.
 
 ### `POST /tasks` — enqueue job. Params:
 
-- `action_url` — URL of the job worker. It should start job upon request and keep connection until completion;
-- `callback_url` — URL to call back upon completion or error;
-- `instance_id` — Optional, EC2 Instance ID to start/stop;
-- `access_key_id`, `access_key_secret` — Access Key for that instance.
+- `action_url` — Required. URL of the job worker. It should start job upon request and keep connection until completion;
+- `callback_url` — Optional. URL to call back upon completion or error;
+- `instance_id` — Optional. EC2 Instance ID to start/stop;
+- `access_key_id`, `access_key_secret` — Required if `instance_id` specified. Access Key for that instance.
 
 Returns ID to identify that job later.
 
@@ -41,7 +41,7 @@ Returns JSON with:
 ## Other details
 
 - Additional param `hrm_task_id` is being added to `action_url` query string for job worker to know how to update meta.
-- Additional params `hrm_task_id` and `hrm_task` is being added to `callback_url` query string for client to know which job is done.
+- Additional param `hrm_task_id` is being added to `callback_url` query string for client to know which job is done.
 - `hrm_task` param contains same JSON data as `GET /tasks/:id` result
 - HTTP port could be changed in `dev.config`
 
