@@ -9,5 +9,6 @@
   meta = undefined,
   started_at = undefined,
   completed_at = undefined,
-  callback_status = undefined
+  callback_status = undefined,
+  timeout = undefined
 }).

@@ -2,7 +2,7 @@
 
 -behaviour(e2_task).
 
--export([create/2, create/5, update_meta/2, to_json/1]).
+-export([create/2, create/6, update_meta/2, to_json/1]).
 
 -export([start_link/1]).
 -export([handle_task/1]).
@@ -17,9 +17,9 @@
 %%%===================================================================
 
 create(ActionUrl, CallbackUrl) ->
-  create(ActionUrl, CallbackUrl, undefined, undefined, undefined).
+  create(ActionUrl, CallbackUrl, undefined, undefined, undefined, undefined).
 
-create(ActionUrl, CallbackUrl, InstanceId, AccessKeyId, AccessKeySecret) ->
+create(ActionUrl, CallbackUrl, InstanceId, AccessKeyId, AccessKeySecret, Timeout) ->
   Task = #task{
     id = uuid:uuid_to_string(uuid:get_v4()),
     action_url = ActionUrl,
@@ -28,7 +28,12 @@ create(ActionUrl, CallbackUrl, InstanceId, AccessKeyId, AccessKeySecret) ->
     access_key_id = AccessKeyId,
     access_key_secret = AccessKeySecret,
     status = pending,
-    started_at = hrm_utils:current_time()
+    started_at = hrm_utils:current_time(),
+    timeout = case Timeout of
+      Timeout when is_list(Timeout) -> list_to_integer(Timeout);
+      Timeout when is_integer(Timeout) -> Timeout;
+      _ -> 60 * 30 % defaut to 30 minutes
+    end
   },
   case validate(Task) of
     [] ->
@@ -120,7 +125,7 @@ handle_instance_state({_, running}, _, _) ->
 %%% do_action_request/1
 
 do_action_request(Task) ->
-  case httpc:request(build_action_url(Task)) of
+  case httpc:request(get, {build_action_url(Task), []}, [{timeout, Task#task.timeout * 1000}], [], httpc:default_profile())  of
     {ok, {{_, StatusCode, _}, _, Body}} ->
       Task#task{
         status = case StatusCode of

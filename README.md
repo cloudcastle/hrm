@@ -15,10 +15,11 @@ It performs smart starting and stopping instances based on scheduled jobs.
 - `callback_url` — Optional. URL to call back upon completion or error;
 - `instance_id` — Optional. EC2 Instance ID to start/stop;
 - `access_key_id`, `access_key_secret` — Required if `instance_id` specified. Access Key for that instance.
+- `timeout` — Optional. `action_url` request timeout in seconds. Default to 30 minutes.
 
 Returns ID to identify that job later.
 
-Use `{dns_name}` or `{private_dns_name}` as a part of `action_url` to use real instance hostname, i.e. `http://#{private_dns_name}/my_action_url`
+Use `{dns_name}` or `{private_dns_name}` as a part of `action_url` to use real instance hostname, i.e. `http://{private_dns_name}/my_action_url`
 
 ### `GET /tasks/:id` — check job status.
 

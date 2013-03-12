@@ -32,10 +32,10 @@ handle_method('GET', TaskId, Req) ->
 
 % Create task
 handle_method('POST', _TaskId, Req) ->
-  [ActionUrl, CallbackUrl, InstanceId, AccessKeyId, AccessKeySecret] = post_values(Req, [
-    action_url, callback_url, instance_id, access_key_id, access_key_secret
+  [ActionUrl, CallbackUrl, InstanceId, AccessKeyId, AccessKeySecret, Timeout] = post_values(Req, [
+    action_url, callback_url, instance_id, access_key_id, access_key_secret, timeout
   ]),
-  case hrm_task:create(ActionUrl, CallbackUrl, InstanceId, AccessKeyId, AccessKeySecret) of
+  case hrm_task:create(ActionUrl, CallbackUrl, InstanceId, AccessKeyId, AccessKeySecret, Timeout) of
     {ok, NewTaskId} -> reply(NewTaskId, Req);
     {errors, Errors} -> reply(jiffy:encode({[{errors, {Errors}}]}), Req, 400)
   end;
