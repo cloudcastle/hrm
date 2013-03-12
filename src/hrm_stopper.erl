@@ -26,8 +26,12 @@ handle_task([InstanceId, EC2] = State) ->
     true ->
       {repeat, State};
     false ->
-      [{InstanceId, "stopping", _}] = erlcloud_ec2:stop_instances([InstanceId], EC2),
-      {stop, normal}
+      [[_, {current_state, _, {name, InstanceState}}, _]] = erlcloud_ec2:stop_instances([InstanceId], EC2),
+      case InstanceState of
+        "stopping" -> {stop, normal};
+        "stopped" -> {stop, normal};
+        _ -> {stop, server_not_stopped}
+      end
   end.
 
 %%%===================================================================
