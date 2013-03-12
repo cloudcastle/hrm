@@ -11,6 +11,7 @@
     sasl,
     inets,
     ssl,
-    cowboy
+    cowboy,
+    erlcloud
   ]}
 ]}.

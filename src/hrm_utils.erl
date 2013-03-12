@@ -1,6 +1,6 @@
 -module(hrm_utils).
 
--export([thing_to_list/1, append_query_params/2, current_time/0]).
+-export([thing_to_list/1, append_query_params/2, current_time/0, replace_tokens_from_proplist/2]).
 
 %% General "to_string" implementation
 thing_to_list(X) when is_integer(X) -> integer_to_list(X);
@@ -27,3 +27,13 @@ format_query(Params) ->
 %% Current GMT time in RFC1123 format
 current_time() ->
   httpd_util:rfc1123_date(erlang:universaltime()).
+
+%% Replace {tokens} in String from Params proplist
+replace_tokens_from_proplist(String, Params) ->
+  lists:foldl(fun({Key, Value}, Result) ->
+    case io_lib:printable_unicode_list(Value) of
+      true -> re:replace(Result, "{"++atom_to_list(Key)++"}", Value, [{return,list}]);
+      false -> Result
+    end
+  end, String, Params).
+  

@@ -2,7 +2,7 @@
 
 -behaviour(cowboy_http_handler).
 
--export([init/3, handle/2, terminate/2]).
+-export([init/3, handle/2, terminate/3]).
 
 %% ===================================================================
 %% Cowboy handler callbacks
@@ -12,11 +12,11 @@ init(_Transport, Req, []) ->
   {ok, Req, undefined}.
 
 handle(Req, State) ->
-  {Method, Req2} = cowboy_http_req:method(Req),
-  {ok, Req3} = handle_method(Method, task_id_from_req(Req2), Req2),
+  {Method, Req2} = cowboy_req:method(Req),
+  {ok, Req3} = handle_method(binary_to_atom(Method, utf8), task_id_from_req(Req2), Req2),
   {ok, Req3, State}.
 
-terminate(_Req, _State) ->
+terminate(_Reason, _Req, _State) ->
   ok.
 
 %% ===================================================================
@@ -53,7 +53,7 @@ handle_method('DELETE', TaskId, Req) ->
 
 % Method not allowed.
 handle_method(_, _, Req) ->
-  cowboy_http_req:reply(405, Req).
+  cowboy_req:reply(405, Req).
 
 %% ===================================================================
 %% Private
@@ -63,13 +63,13 @@ reply(Content, Req) ->
   reply(Content, Req, 200).
 
 reply(Content, Req, Status) ->
-  cowboy_http_req:reply(Status, [
-    {<<"Content-Encoding">>, <<"utf-8">>},
-    {<<"Content-Type">>, <<"application/json">>}
+  cowboy_req:reply(Status, [
+    {"Content-Encoding", "utf-8"},
+    {"Content-Type", "application/json"}
   ], Content, Req).
 
 post_values(Req, Fields) ->
-  {PostVals, _} = cowboy_http_req:body_qs(Req),
+  {ok, PostVals, _} = cowboy_req:body_qs(Req),
   lists:map(fun(Field) ->
     case proplists:get_value(atom_to_binary(Field, utf8), PostVals) of
       undefined -> undefined;
@@ -78,7 +78,7 @@ post_values(Req, Fields) ->
   end, Fields).
 
 task_id_from_req(Req) ->
-  case cowboy_http_req:binding(task, Req) of
+  case cowboy_req:binding(task, Req) of
     {undefined, _} -> undefined;
     {TaskId, _} -> binary_to_list(TaskId)
   end.

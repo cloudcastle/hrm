@@ -94,11 +94,11 @@ do_action(Task) ->
 ensure_instance(undefined, _, _) ->
   ok;
 ensure_instance(InstanceId, AccessKeyId, AccessKeySecret) ->
-  EC2 = erlaws_ec2:new(AccessKeyId, AccessKeySecret, true),
+  EC2 = erlcloud_ec2:new(AccessKeyId, AccessKeySecret),
   handle_instance_state({unknown, get_instance_state(InstanceId, EC2)}, InstanceId, EC2).
 
 handle_instance_state({_, stopped}, InstanceId, EC2) ->
-  [{_, State, PrevState}] = EC2:start_instances([InstanceId]),
+  [[_, {current_state, _, {name, State}}, {previous_state, _, {name, PrevState}}]] = erlcloud_ec2:start_instances([InstanceId], EC2),
   handle_instance_state({list_to_atom(PrevState), list_to_atom(State)}, InstanceId, EC2);
 
 handle_instance_state({stopped, pending}, InstanceId, EC2) ->
@@ -141,14 +141,9 @@ do_action_request(Task) ->
 build_action_url(Task) ->
   Url = case re:run(Task#task.action_url, "{\\w+}") of
     nomatch -> Task#task.action_url;
-    {match, _} -> replace_instance_props(Task, Task#task.action_url)
+    {match, _} -> hrm_utils:replace_tokens_from_proplist(Task#task.action_url, get_instance_fields(get_instance_data(Task)))
   end,
   hrm_utils:append_query_params(Url, [{hrm_task_id, Task#task.id}]).
-
-replace_instance_props(Task, Url) ->
-  lists:foldl(fun({Key, Value}, UrlResult) ->
-    re:replace(UrlResult, "{"++atom_to_list(Key)++"}", Value, [{return,list}])
-  end, Url, get_instance_data(Task)).
 
 %%% do_callback_request/1
 
@@ -197,18 +192,23 @@ validate_field(_, _, _) -> ok.
 %%% get_instance_state/2
 
 get_instance_state(InstanceId, EC2) ->
-  [InstanceData] = EC2:describe_instances([InstanceId]),
+  [InstanceData] = erlcloud_ec2:describe_instances([InstanceId], EC2),
   get_instance_state(InstanceData).
 
 get_instance_state(InstanceData) ->
-  list_to_atom(proplists:get_value(instance_state, InstanceData)).
+  InstanceState = proplists:get_value(instance_state, get_instance_fields(InstanceData)),
+  list_to_atom(proplists:get_value(name, InstanceState)).
 
 get_instance_data(#task{instance_id=undefined}) ->
   [];
 get_instance_data(Task) ->
-  EC2 = erlaws_ec2:new(Task#task.access_key_id, Task#task.access_key_secret, true),
-  [InstanceData] = EC2:describe_instances([Task#task.instance_id]),
+  EC2 = erlcloud_ec2:new(Task#task.access_key_id, Task#task.access_key_secret),
+  [InstanceData] = erlcloud_ec2:describe_instances([Task#task.instance_id], EC2),
   InstanceData.
+
+get_instance_fields(InstanceData) ->
+  [Fields|_] = proplists:get_value(instances_set, InstanceData),
+  Fields.
 
 %%%===================================================================
 %%% Common validation methods
@@ -231,8 +231,8 @@ validate_ec2_instance(_, AccessKeyId, AccessKeySecret) when
   ok;
 
 validate_ec2_instance(InstanceId, AccessKeyId, AccessKeySecret) ->
-  EC2 = erlaws_ec2:new(AccessKeyId, AccessKeySecret, true),
-  try EC2:describe_instances([InstanceId]) of
+  EC2 = erlcloud_ec2:new(AccessKeyId, AccessKeySecret),
+  try erlcloud_ec2:describe_instances([InstanceId], EC2) of
     [] -> not_found;
     [InstanceData] -> validate_instance_state(get_instance_state(InstanceData))
   catch

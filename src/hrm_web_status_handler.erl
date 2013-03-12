@@ -2,7 +2,7 @@
 
 -behaviour(cowboy_http_handler).
 
--export([init/3, handle/2, terminate/2]).
+-export([init/3, handle/2, terminate/3]).
 
 -include("../include/hrm_task.hrl").
 
@@ -14,11 +14,11 @@ init(_Transport, Req, []) ->
   {ok, Req, undefined}.
 
 handle(Req, State) ->
-  {Method, Req2} = cowboy_http_req:method(Req),
-  {ok, Req3} = handle_method(Method, Req2),
+  {Method, Req2} = cowboy_req:method(Req),
+  {ok, Req3} = handle_method(binary_to_atom(Method, utf8), Req2),
   {ok, Req3, State}.
 
-terminate(_Req, _State) ->
+terminate(_Reason, _Req, _State) ->
   ok.
 
 %% ===================================================================
@@ -43,7 +43,7 @@ handle_method('GET', Req) ->
 
 % Method not allowed.
 handle_method(_, Req) ->
-  cowboy_http_req:reply(405, Req).
+  cowboy_req:reply(405, Req).
 
 %% ===================================================================
 %% Private
@@ -53,7 +53,7 @@ reply(Content, Req) ->
   reply(Content, Req, 200).
 
 reply(Content, Req, Status) ->
-  cowboy_http_req:reply(Status, [
-    {<<"Content-Encoding">>, <<"utf-8">>},
-    {<<"Content-Type">>, <<"application/json">>}
+  cowboy_req:reply(Status, [
+    {"Content-Encoding", "utf-8"},
+    {"Content-Type", "application/json"}
   ], Content, Req).

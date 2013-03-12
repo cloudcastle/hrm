@@ -9,13 +9,14 @@
 %%%===================================================================
 
 init() ->
-  {ok, _} = cowboy:start_listener(hrm_http_listener, 100,
-    cowboy_tcp_transport, [{port, config_value(http_port)}],
-    cowboy_http_protocol, [{dispatch, [{'_', [
-      {[<<"tasks">>], hrm_web_tasks_handler, []},
-      {[<<"tasks">>, task], hrm_web_tasks_handler, []},
-      {[<<"status">>], hrm_web_status_handler, []}
-    ]}]}]
+  Dispatch = cowboy_router:compile([{'_', [
+    {"/tasks", hrm_web_tasks_handler, []},
+    {"/tasks/:task", hrm_web_tasks_handler, []},
+    {"/status", hrm_web_status_handler, []}
+  ]}]),
+  {ok, _} = cowboy:start_http(hrm_http_listener, 100,
+    [{port, config_value(http_port)}],
+    [{env, [{dispatch, Dispatch}]}]
   ),
   {ok, [
     {hrm_storage, start_link, [config_value(db_file)]},
