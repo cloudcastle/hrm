@@ -2,7 +2,7 @@
 
 -behaviour(e2_task).
 
--export([start_link/2]).
+-export([start_link/3]).
 -export([handle_task/1]).
 
 -include("../include/hrm_task.hrl").
@@ -11,22 +11,35 @@
 %%% Public API
 %%%===================================================================
 
-start_link(Pid, Task) ->
-  e2_task:start_link(?MODULE, [Pid, Task], [
-    {delay, Task#task.timeout * 1000}
+start_link(Pid, Task, StartDate) ->
+  e2_task:start_link(?MODULE, [Pid, Task#task.id], [
+    {delay, delay_by_start_time(StartDate, Task#task.timeout)}
   ]).
 
 %%%===================================================================
 %%% e2_task callbacks
 %%%===================================================================
 
-handle_task([Pid, Task]) ->
-  case hrm_storage:get(Task#task.id) of
-    #task{status=pending} ->
+handle_task([Pid, TaskId]) ->
+  case hrm_storage:get(TaskId) of
+    {ok, #task{status=pending}} ->
       exit(Pid, kill),
-      hrm_storage:update(Task#task.id, fun (Task2) ->
-        Task2#task{status = timeout}
+      hrm_storage:update(TaskId, fun (Task) ->
+        Task#task{status = timeout}
       end);
     _ -> ok
   end,
   {stop, normal}.
+
+%%%===================================================================
+%%% Private
+%%%===================================================================
+
+delay_by_start_time(StartTime, Timeout) ->
+  TimeoutTs = calendar:datetime_to_gregorian_seconds(StartTime) + Timeout,
+  CurrentTs = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
+  if
+    TimeoutTs > CurrentTs ->
+      (TimeoutTs - CurrentTs) * 1000;
+    true -> 0
+  end.

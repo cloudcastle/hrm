@@ -40,7 +40,7 @@ create(ActionUrl, CallbackUrl, InstanceId, AccessKeyId, AccessKeySecret, Timeout
       hrm_storage:put(Task),
       case hrm_tasks_sup:start_task_runner(Task) of
         {ok, Pid} ->
-          hrm_persistent_jobs:start(hrm_task_timeouters_sup, start_task_timeouter, [Pid, Task]),
+          hrm_persistent_jobs:start(hrm_task_timeouters_sup, start_task_timeouter, [Pid, Task, calendar:universal_time()]),
           {ok, Task#task.id};
         {error, Reason} ->
           {errors, Reason}
