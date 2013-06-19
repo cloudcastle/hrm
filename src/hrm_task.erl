@@ -2,7 +2,7 @@
 
 -behaviour(e2_task).
 
--export([create/2, create/6, update_meta/2, to_json/1]).
+-export([create/2, create/6, update_meta/2, to_json/1, do_callback_request/1]).
 
 -export([start_link/1]).
 -export([handle_task/1]).

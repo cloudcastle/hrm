@@ -25,7 +25,7 @@ handle_task([Pid, TaskId]) ->
     {ok, #task{status=pending}} ->
       exit(Pid, kill),
       hrm_storage:update(TaskId, fun (Task) ->
-        Task#task{status = timeout}
+        hrm_task:do_callback_request(Task#task{status = timeout})
       end);
     _ -> ok
   end,
