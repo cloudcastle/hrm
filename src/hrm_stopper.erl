@@ -2,7 +2,7 @@
 
 -behaviour(e2_task).
 
--export([start_link/3, is_instance_in_use/1]).
+-export([start_link/3]).
 -export([handle_task/1]).
 
 -include("../include/hrm_task.hrl").

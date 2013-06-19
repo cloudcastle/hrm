@@ -38,8 +38,13 @@ create(ActionUrl, CallbackUrl, InstanceId, AccessKeyId, AccessKeySecret, Timeout
   case validate(Task) of
     [] ->
       hrm_storage:put(Task),
-      hrm_tasks_sup:start_task_runner(Task),
-      {ok, Task#task.id};
+      case hrm_tasks_sup:start_task_runner(Task) of
+        {ok, Pid} ->
+          hrm_persistent_jobs:start(hrm_task_timeouters_sup, start_task_timeouter, [Pid, Task]),
+          {ok, Task#task.id};
+        {error, Reason} ->
+          {errors, Reason}
+      end;
     Errors ->
       {errors, Errors}
   end.
@@ -125,7 +130,7 @@ handle_instance_state({_, running}, _, _) ->
 %%% do_action_request/1
 
 do_action_request(Task) ->
-  case httpc:request(get, {build_action_url(Task), []}, [{timeout, Task#task.timeout * 1000}], [], httpc:default_profile())  of
+  case httpc:request(build_action_url(Task)) of
     {ok, {{_, StatusCode, _}, _, Body}} ->
       Task#task{
         status = case StatusCode of

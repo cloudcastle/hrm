@@ -3,7 +3,7 @@
 -behavior(e2_service).
 -behavior(e2_task).
 
--export([start/3, status/0]).
+-export([start/3, status/0, status/1]).
 
 -export([start_link/1]).
 -export([init/1, handle_msg/3]).
@@ -21,6 +21,9 @@ start(Spec) ->
 
 status() ->
   e2_service:call(?MODULE, status).
+
+status(SpecPattern) ->
+  e2_service:call(?MODULE, {status, SpecPattern}).
 
 start_link(File) ->
   {ok, Pid} = e2_service:start_link(?MODULE, File, [registered]),
@@ -44,7 +47,11 @@ handle_msg({start, [Module, Method, Args] = Spec}, _From, Db) ->
   {noreply, Db};
 
 handle_msg(status, _From, Db) ->
-  Children = dets:match(Db, {'_', '$2', running}),
+  Children = dets:match(Db, {'_', '$1', running}),
+  {reply, Children, Db};
+
+handle_msg({status, SpecPattern}, _From, Db) ->
+  Children = dets:match(Db, {'_', SpecPattern, running}),
   {reply, Children, Db};
 
 handle_msg(extract_lost_children, _From, Db) ->
